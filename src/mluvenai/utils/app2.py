@@ -190,71 +190,68 @@ def audio_recorder():
             )
 
 
+def st_connecting():
+    with st.sidebar:
+        if st.button("Connect", type="primary"):
+            with st.spinner("Connecting..."):
+                try:
+                    run_async(st.session_state.client.connect())
+                    if st.session_state.client.is_connected():
+                        st.success("Connected to OpenAI Realtime API")
+                        return True
+                    else:
+                        st.error("Failed to connect to OpenAI Realtime API")
+                except Exception as e:
+                    st.error(f"Error connecting to OpenAI Realtime API: {str(e)}")
+                    return True
+
+
 def st_app():
     """
     Our main streamlit app function.
     """
     st.markdown(HIDE_STREAMLIT_RUNNING_MAN_SCRIPT, unsafe_allow_html=True)
 
-    main_tab, docs_tab = st.tabs(["Console", "Docs"])
+    with st.sidebar:
+        with st.expander("Debug info", expanded=False):
+            st.session_state.show_full_events = st.checkbox(
+                "Show Full Event Payloads", value=False
+            )
+            with st.container(height=300, key="logs_container"):
+                logs_text_area()
 
-    with main_tab:
-        st.markdown(
-            f"<img src='{OAI_LOGO_URL}' width='30px'/>   **realtime console**",
-            unsafe_allow_html=True,
-        )
+    button_text = "Stop Recording" if st.session_state.recording else "Send Audio"
+    st.button(button_text, on_click=toggle_recording, type="primary")
 
-        with st.sidebar:
-            if st.button("Connect", type="primary"):
-                with st.spinner("Connecting..."):
-                    try:
-                        run_async(st.session_state.client.connect())
-                        if st.session_state.client.is_connected():
-                            st.success("Connected to OpenAI Realtime API")
-                        else:
-                            st.error("Failed to connect to OpenAI Realtime API")
-                    except Exception as e:
-                        st.error(f"Error connecting to OpenAI Realtime API: {str(e)}")
+    with st.container(height=300, key="response_container"):
+        response_area()
 
-        st.session_state.show_full_events = st.checkbox(
-            "Show Full Event Payloads", value=False
-        )
-        with st.container(height=300, key="logs_container"):
-            logs_text_area()
 
-        with st.container(height=300, key="response_container"):
-            response_area()
 
-        button_text = "Stop Recording" if st.session_state.recording else "Send Audio"
-        st.button(button_text, on_click=toggle_recording, type="primary")
+    # _ = st.text_area("Enter your message:", key="input_text_area", height=200)
 
-        _ = st.text_area("Enter your message:", key="input_text_area", height=200)
+    def clear_input_cb():
+        """
+        Callback that will clear our message input box after the user
+        clicks the send button.
+        """
+        st.session_state.last_input = st.session_state.input_text_area
+        st.session_state.input_text_area = ""
 
-        def clear_input_cb():
-            """
-            Callback that will clear our message input box after the user
-            clicks the send button.
-            """
-            st.session_state.last_input = st.session_state.input_text_area
-            st.session_state.input_text_area = ""
-
-        if st.button("Send", on_click=clear_input_cb, type="primary"):
-            if st.session_state.get("last_input"):
-                try:
-                    event = json.loads(st.session_state.get("last_input"))
-                    with st.spinner("Sending message..."):
-                        event_type = event.pop("type")
-                        st.session_state.client.send(event_type, event)
-                    st.success("Message sent successfully")
-                except json.JSONDecodeError:
-                    st.error("Invalid JSON input. Please check your message format.")
-                except Exception as e:
-                    st.error(f"Error sending message: {str(e)}")
-            else:
-                st.warning("Please enter a message before sending.")
-
-    with docs_tab:
-        st.markdown(DOCS)
+    # if st.button("Send", on_click=clear_input_cb, type="primary"):
+    #     if st.session_state.get("last_input"):
+    #         try:
+    #             event = json.loads(st.session_state.get("last_input"))
+    #             with st.spinner("Sending message..."):
+    #                 event_type = event.pop("type")
+    #                 st.session_state.client.send(event_type, event)
+    #             st.success("Message sent successfully")
+    #         except json.JSONDecodeError:
+    #             st.error("Invalid JSON input. Please check your message format.")
+    #         except Exception as e:
+    #             st.error(f"Error sending message: {str(e)}")
+    #     else:
+    #         st.warning("Please enter a message before sending.")
 
     audio_player()
 
